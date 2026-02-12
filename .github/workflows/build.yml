@@ -1,4 +1,4 @@
-name: Build VKCG
+name: Build VKCG 1
 
 on:
   push:
