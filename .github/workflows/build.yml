@@ -96,16 +96,13 @@ jobs:
       run: |
         timestamp=$(date +"%Y%m%d-%H%M%S")
         tagName="v$timestamp"
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag -a $tagName -m "Release $tagName"
-        git push origin $tagName
         
-        # Create release with all platform binaries
+        # Create release without pushing tag first
         gh release create $tagName \
           VKCG.exe \
           VKCG \
           --title "VKCG Release $tagName" \
-          --notes "Automated release of VKCG executable for Windows, Linux and macOS"
+          --notes "Automated release of VKCG executable for Windows, Linux and macOS" \
+          --latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
