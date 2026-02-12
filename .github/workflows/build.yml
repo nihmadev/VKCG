@@ -48,14 +48,8 @@ jobs:
         retention-days: 30
     
     - name: Create tag and release
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'windows-latest'
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          artifact_name="VKCG.exe"
-        else
-          artifact_name="VKCG"
-        fi
-        
         timestamp=$(date +"%Y%m%d-%H%M%S")
         tagName="v$timestamp"
         git config --local user.email "action@github.com"
@@ -63,12 +57,28 @@ jobs:
         git tag -a $tagName -m "Release $tagName"
         git push origin $tagName
         
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          gh release create $tagName dist/VKCG.exe --title "VKCG Release $tagName" --notes "Automated release of VKCG executable for Windows"
-        elif [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          gh release create $tagName dist/VKCG --title "VKCG Release $tagName" --notes "Automated release of VKCG executable for Linux"
-        else
-          gh release create $tagName dist/VKCG --title "VKCG Release $tagName" --notes "Automated release of VKCG executable for macOS"
-        fi
+        # Create release with all platform binaries
+        gh release create $tagName \
+          dist/VKCG.exe \
+          --title "VKCG Release $tagName" \
+          --notes "Automated release of VKCG executable for Windows, Linux and macOS"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload Linux binary to release
+      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'ubuntu-latest'
+      run: |
+        # Get the latest tag
+        latest_tag=$(git describe --tags --abbrev=0)
+        gh release upload $latest_tag dist/VKCG
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload macOS binary to release
+      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'macos-latest'
+      run: |
+        # Get the latest tag
+        latest_tag=$(git describe --tags --abbrev=0)
+        gh release upload $latest_tag dist/VKCG
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
