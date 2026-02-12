@@ -47,8 +47,33 @@ jobs:
           dist/VKCG
         retention-days: 30
     
+    - name: Upload all binaries to release
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-assets
+        path: |
+          dist/VKCG.exe
+          dist/VKCG
+        retention-days: 1
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: release-assets
+        merge-multiple: true
+    
     - name: Create tag and release
-      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'windows-latest'
       run: |
         timestamp=$(date +"%Y%m%d-%H%M%S")
         tagName="v$timestamp"
@@ -59,26 +84,9 @@ jobs:
         
         # Create release with all platform binaries
         gh release create $tagName \
-          dist/VKCG.exe \
+          VKCG.exe \
+          VKCG \
           --title "VKCG Release $tagName" \
           --notes "Automated release of VKCG executable for Windows, Linux and macOS"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Upload Linux binary to release
-      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'ubuntu-latest'
-      run: |
-        # Get the latest tag
-        latest_tag=$(git describe --tags --abbrev=0)
-        gh release upload $latest_tag dist/VKCG
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Upload macOS binary to release
-      if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && matrix.os == 'macos-latest'
-      run: |
-        # Get the latest tag
-        latest_tag=$(git describe --tags --abbrev=0)
-        gh release upload $latest_tag dist/VKCG
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
