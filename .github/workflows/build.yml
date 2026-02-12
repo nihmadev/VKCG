@@ -1,15 +1,10 @@
-name: Build VKCG 1
+name: Build VKCG
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allow manual trigger
-
-permissions:
-  contents: write
-  releases: write
 
 jobs:
   build:
@@ -21,39 +16,16 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
     
-    - name: Cache pip dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/pip
-          ~/pip-cache
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          ${{ runner.os }}-
-    
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip --cache-dir ~/pip-cache
-        pip install pyinstaller browser-cookie3 --cache-dir ~/pip-cache
-    
-    - name: Cache PyInstaller build
-      uses: actions/cache@v4
-      with:
-        path: |
-          build/
-          dist/
-        key: ${{ runner.os }}-pyinstaller-${{ hashFiles('**/VKCG.py', '**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pyinstaller-
+        python -m pip install --upgrade pip
+        pip install pyinstaller browser-cookie3
     
     - name: Build executable
       shell: bash
@@ -72,48 +44,3 @@ jobs:
           dist/VKCG.exe
           dist/VKCG
         retention-days: 30
-    
-    - name: Upload binary for release
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-assets-${{ matrix.os }}
-        path: |
-          dist/VKCG.exe
-          dist/VKCG
-        retention-days: 1
-
-  create-release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    permissions:
-      contents: write
-      releases: write
-    
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: release-assets-*
-        merge-multiple: true
-    
-    - name: Create tag and release
-      run: |
-        timestamp=$(date +"%Y%m%d-%H%M%S")
-        tagName="v$timestamp"
-        
-        # Create release without pushing tag first
-        gh release create $tagName \
-          VKCG.exe \
-          VKCG \
-          --title "VKCG Release $tagName" \
-          --notes "Automated release of VKCG executable for Windows, Linux and macOS" \
-          --latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
